@@ -1,4 +1,4 @@
-	#include <string>
+#include <string>
 #include <algorithm>
 #include <stdio.h>
 
@@ -59,7 +59,7 @@ private:
 	image_transport::Subscriber image_sub;
 	SimpleActionClient<ExecutePlanAction>* c;
 	SimpleActionClient<MoveBaseAction>* cc;
-	
+
 	bool first = true;
 	bool killed = false;
 	double lastIdle = -1;
@@ -89,13 +89,12 @@ private:
 	}
 	
 	void run(Mat frame) {
+		Mat outputFrame = frame.clone();
 		vector<pair<Rect, string>> faces = frame_proc.process(frame);
 
 		Mat face;
 		bool stranger = false;
 		for (auto elem : faces) {
-			rectangle(frame, elem.first, Scalar(0, 255, 0));
-
 			face = frame(elem.first).clone();
 			string name = elem.second;
 			if (name.size() == 0) {
@@ -108,34 +107,36 @@ private:
 				cin >> name;
 				destroyWindow("stranger");
 			}
+
+			rectangle(outputFrame, elem.first, Scalar(0, 255, 0));
 			learn(name, face);
-			frameText(frame, name.c_str(), elem.first);
+			frameText(outputFrame, name.c_str(), elem.first);
 		}
 
 		fps.frame();
 
-		text(frame, to_string(fps.getFPS()).c_str(), cv::Point(0, frame.size().height - 5));
+		text(outputFrame, to_string(fps.getFPS()).c_str(), cv::Point(0, outputFrame.size().height - 5));
 		imshow("cam", frame);
 
 		if (prevFaces.size() != faces.size() && !stranger) {
 			for (auto elem : faces) {
 				if (!vector_contains(prevFaces, elem)) {
-					//elem in faces that's not in prevFaces
-					//someone entered
 					printf("entered frame: %s\n", elem.second.c_str());
 
 					string cmd = greetings[rand() % greetings_sz] + " " + elem.second;
-					client->say(cmd.c_str());
+					//client->say(cmd.c_str());
+					string fcmd = "rosrun sound_play say.hi '" + cmd + "' &> /dev/null &";
+					system(fcmd.c_str());
 				}
 			}
 			for (auto elem : prevFaces) {
 				if (!vector_contains(faces, elem)) {
-					//elem in prevFaces that's not in faces
-					//someone left
 					printf("left frame: %s\n", elem.second.c_str());
 
 					string cmd = goodbyes[rand() % goodbyes_sz] + " " + elem.second;
-					client->say(cmd.c_str());
+					//client->say(cmd.c_str());
+					string fcmd = "rosrun sound_play say.hi '" + cmd + "' &> /dev/null &";
+					system(fcmd.c_str());
 				}
 			}
 		}
